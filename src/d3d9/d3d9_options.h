@@ -3,6 +3,8 @@
 #include "../util/config/config.h"
 #include "../dxvk/dxvk_device.h"
 
+#include <charconv>
+
 namespace dxvk {
 
   enum class D3D9FloatEmulation : uint8_t {
@@ -12,6 +14,8 @@ namespace dxvk {
   };
 
   struct D3D9Options {
+
+    void parseVirtualResolutions(const std::string& resolutionsString);
 
     D3D9Options(const Rc<DxvkDevice>& device, const Config& config);
 
@@ -172,6 +176,9 @@ namespace dxvk {
 
     /// Add an extra front buffer to make GetFrontBufferData() work correctly when the swapchain only has a single buffer
     bool extraFrontbuffer;
+
+    /// Extra virtual resolutions
+    std::vector<std::pair<uint32_t, uint32_t>> virtualResolutions;
   };
 
 }

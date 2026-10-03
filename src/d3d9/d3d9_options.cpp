@@ -28,6 +28,46 @@ namespace dxvk {
     return id;
   }
 
+  static inline uint32_t parseDword(std::string_view str) {
+    uint32_t value = 0;
+    std::from_chars(str.data(), str.data() + str.size(), value);
+    return value;
+  }
+
+  void D3D9Options::parseVirtualResolutions(const std::string& resolutionsStr) {
+    if (resolutionsStr.empty())
+      return;
+
+    if (resolutionsStr.find_first_of("0123456789") == std::string::npos) {
+      Logger::warn(str::format("D3D9: Invalid virtualResolutions value: ", resolutionsStr));
+      Logger::warn("D3D9: Expected numbers.");
+      return;
+    }
+
+    std::vector<std::string_view> resolutionEntries = str::split(resolutionsStr, ",");
+
+    for (auto resolutionEntry : resolutionEntries) {
+      std::vector<std::string_view> dimensions = str::split(resolutionEntry, "x");
+      if (dimensions.size() != 2) {
+        Logger::warn(str::format("D3D9: Invalid virtualResolutions entry: ", resolutionEntry));
+        return;
+      }
+
+      uint32_t width = parseDword(dimensions[0]);
+      if (width == 0) {
+        Logger::warn(str::format("D3D9: Invalid virtualResolutions width: ", dimensions[0]));
+        return;
+      }
+
+      uint32_t height = parseDword(dimensions[1]);
+      if (height == 0) {
+        Logger::warn(str::format("D3D9: Invalid virtualResolutions height: ", dimensions[1]));
+        return;
+      }
+
+      virtualResolutions.emplace_back(width, height);
+    }
+  }
 
   D3D9Options::D3D9Options(const Rc<DxvkDevice>& device, const Config& config) {
     const Rc<DxvkAdapter> adapter = device != nullptr ? device->adapter() : nullptr;
@@ -77,6 +117,9 @@ namespace dxvk {
     this->countLosableResources         = config.getOption<bool>        ("d3d9.countLosableResources",         true);
     this->reproducibleCommandStream     = config.getOption<bool>        ("d3d9.reproducibleCommandStream",     false);
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
+
+    std::string virtualResolutionsStr   = config.getOption<std::string> ("d3d9.virtualResolutions",            "");
+    parseVirtualResolutions(virtualResolutionsStr);
 
     // D3D8 options
     this->drefScaling = config.getOption<int32_t>("d3d8.scaleDref", 0);

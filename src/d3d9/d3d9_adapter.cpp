@@ -978,11 +978,10 @@ namespace dxvk {
 
     wsi::WsiMode currentMode = { };
     wsi::WsiMode currentCompatibleMode = { };
+    wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
 
-    if (options.modeCountCompatibility) {
-      wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
-
-      if (likely(currentMode.width)) {
+    if (likely(currentMode.width)) {
+      if (options.modeCountCompatibility) {
         // Skip checking the compabilitiy refresh rate (60 Hz),
         // if that's equal to the current desktop refresh rate.
         if (currentMode.refreshRate.numerator / currentMode.refreshRate.denominator != 60) {
@@ -990,9 +989,22 @@ namespace dxvk {
           currentCompatibleMode.refreshRate.numerator = 60;
           currentCompatibleMode.refreshRate.denominator = 1;
         }
-      } else {
-        Logger::err("D3D9Adapter::CacheModes: Failed to determine desktop display mode");
       }
+
+      for (auto [width, height] : options.virtualResolutions) {
+        D3DDISPLAYMODEEX mode = { };
+        mode.Size             = sizeof(D3DDISPLAYMODEEX);
+        mode.Width            = width;
+        mode.Height           = height;
+        mode.RefreshRate      = currentMode.refreshRate.numerator / currentMode.refreshRate.denominator;
+        mode.Format           = static_cast<D3DFORMAT>(Format);
+        mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+
+        if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
+          m_modes.push_back(mode);
+      }
+    } else {
+      Logger::err("D3D9Adapter::CacheModes: Failed to determine desktop display mode");
     }
 
     // Walk over all modes that the display supports and
